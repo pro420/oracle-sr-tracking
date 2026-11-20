@@ -11,7 +11,51 @@ file and answers the question that matters each morning: *which SRs need me toda
 - Refer to SRs by a **unique suffix** — `srt show 6789` instead of `3-38123456789`
 - Daily agenda, full-text search (including notes), stats, CSV/JSON export, CSV import
 
-Requires Python 3.9+ and nothing else.
+Requires Python 3.9+ and nothing else for the CLI. The optional web UI uses Flask.
+
+## Web UI
+
+The same data is available in a browser: a **Today** dashboard, a filterable SR list,
+SR pages with history and a one-box "log an update" form, stats, CSV import and export.
+
+```bash
+pip install '.[web]'
+srt web            # http://127.0.0.1:8000
+```
+
+## Deploy to a server
+
+The web app ships as a Docker image. It stores its SQLite database in `/data`, so mount a
+persistent volume there. It **refuses to start without `SRT_PASSWORD`**; every page is
+protected by HTTP basic auth (username `srt` unless `SRT_USERNAME` is set). Put it behind
+HTTPS (any reverse proxy or hosting platform does this) since basic auth sends the password
+with every request.
+
+| Variable | Purpose |
+|---|---|
+| `SRT_PASSWORD` | Required. Login password |
+| `SRT_USERNAME` | Login username (default `srt`) |
+| `SRT_OWNER` | Default owner for new SRs |
+| `SRT_SECRET_KEY` | Session key (default: generated and saved in `/data`) |
+| `PORT` | Listen port (default 8000) |
+
+**Any server with Docker (VM, on-prem box, OCI compute):**
+
+```bash
+SRT_PASSWORD='choose-a-strong-password' docker compose up -d --build
+```
+
+**Render:** New → Blueprint → select this repo. `render.yaml` creates the service with a
+1 GB disk at `/data` and asks for `SRT_PASSWORD`. A persistent disk needs a paid instance.
+
+**Other platforms (Fly.io, Railway, Azure Container Apps, OCI Container Instances…):**
+deploy the `Dockerfile`, set `SRT_PASSWORD`, attach a volume at `/data`, health check `/healthz`.
+Run a single instance: SQLite lives on that one volume.
+
+Back up by copying `/data/srs.db`, or download **SRs → Export JSON** (includes history).
+
+You can also run CLI commands against the deployed database:
+`docker compose exec srtrack srt today`.
 
 ## Install
 
@@ -72,6 +116,7 @@ srt close 6789 -r "Applied one-off patch 35123456"
 | `srt import FILE.csv [--update]` | Import from a spreadsheet; headers like `SR Number`, `Problem Summary`, `Sev` are recognised |
 | `srt statuses` | Show status codes |
 | `srt rm SR` | Delete an SR and its history |
+| `srt web [--host H --port P]` | Run the browser UI (needs `pip install '.[web]'`) |
 
 List filters: `--status CUS` (repeatable), `-s 1` (repeatable), `-w us|oracle`, `-p PRODUCT`,
 `-o OWNER`, `-t TAG`, `-a` (include closed), `-c` (only closed), `-d` (follow-ups due),

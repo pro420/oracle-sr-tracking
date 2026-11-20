@@ -1,0 +1,52 @@
+{% macro sev(n) %}<span class="sev s{{ n }}">S{{ n }}</span>{% endmacro %}
+
+{% macro waiting(sr) %}
+  {%- if sr.waiting_on == 'us' %}<span class="pill us">Us</span>
+  {%- elif sr.waiting_on == 'oracle' %}<span class="pill oracle">Oracle</span>
+  {%- else %}<span class="muted">—</span>{% endif -%}
+{% endmacro %}
+
+{% macro follow_up(sr) %}
+  {%- if not sr.follow_up %}<span class="muted">—</span>
+  {%- else %}{% set d = sr.follow_up|days_until %}
+    {%- if not sr.is_open %}<span class="muted">{{ sr.follow_up }}</span>
+    {%- elif d < 0 %}<span class="late">{{ sr.follow_up }} · {{ -d }}d late</span>
+    {%- elif d == 0 %}<span class="due">Today</span>
+    {%- elif d == 1 %}Tomorrow
+    {%- else %}{{ sr.follow_up }}{% endif %}
+  {%- endif -%}
+{% endmacro %}
+
+{% macro sr_table(srs, empty="No SRs.") %}
+  {% if srs %}
+  <div class="table-wrap">
+  <table class="srs">
+    <thead><tr><th>SR</th><th>Sev</th><th>Status</th><th>Waiting</th><th>Age</th><th>Follow-up</th><th>Title</th><th>Next action</th></tr></thead>
+    <tbody>
+    {% for sr in srs %}
+      <tr>
+        <td class="num"><a href="{{ url_for('sr_detail', number=sr.number) }}">{{ sr.number }}</a></td>
+        <td>{{ sev(sr.severity) }}</td>
+        <td><span class="code" title="{{ sr.status_name }}">{{ sr.status }}</span></td>
+        <td>{{ waiting(sr) }}</td>
+        <td class="numeric">{{ sr.age_days(today) }}d</td>
+        <td class="nowrap">{{ follow_up(sr) }}</td>
+        <td class="title"><a href="{{ url_for('sr_detail', number=sr.number) }}">{{ sr.title }}</a>
+          {% if sr.product %}<div class="muted small">{{ sr.product }}</div>{% endif %}</td>
+        <td>{{ sr.next_action or '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="empty">{{ empty }}</p>{% endif %}
+{% endmacro %}
+
+{% macro status_select(name, selected, blank=None) %}
+  <select name="{{ name }}" id="{{ name }}">
+    {% if blank %}<option value="">{{ blank }}</option>{% endif %}
+    {% for code, (label, who) in STATUSES.items() %}
+      <option value="{{ code }}" {% if code == selected %}selected{% endif %}>{{ code }} — {{ label }}</option>
+    {% endfor %}
+  </select>
+{% endmacro %}

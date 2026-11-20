@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Stats{% endblock %}
+{% block content %}
+<h1>Stats</h1>
+<div class="tiles">
+  <div class="tile"><span>Open</span><b>{{ st.open }}</b></div>
+  <div class="tile"><span>Waiting on us</span><b>{{ st.waiting_us }}</b></div>
+  <div class="tile"><span>Waiting on Oracle</span><b>{{ st.waiting_oracle }}</b></div>
+  <div class="tile"><span>Overdue follow-ups</span><b>{{ st.overdue }}</b></div>
+  <div class="tile"><span>Median open age</span><b>{{ st.open_age_median if st.open_age_median is not none else '—' }}{% if st.open_age_median is not none %}<small>d</small>{% endif %}</b></div>
+  <div class="tile"><span>Median time to close</span><b>{{ st.close_median if st.close_median is not none else '—' }}{% if st.close_median is not none %}<small>d</small>{% endif %}</b></div>
+  <div class="tile"><span>Closed, last 30 days</span><b>{{ st.closed_last_30 }}</b></div>
+</div>
+
+{% set max_sev = (st.by_severity|map(attribute=1)|max) if st.by_severity else 1 %}
+<div class="cols even">
+  <section class="card">
+    <h2>Open by severity</h2>
+    {% for s, n in st.by_severity %}
+      <a class="bar" href="{{ url_for('sr_list', sev=s) }}"><span>Sev {{ s }}</span><i class="s{{ s }}" style="width: {{ (n / max_sev * 100)|round }}%"></i><b>{{ n }}</b></a>
+    {% else %}<p class="empty">No open SRs.</p>{% endfor %}
+  </section>
+  <section class="card">
+    <h2>Open by status</h2>
+    <table class="plain">
+      {% for code, name, n in st.by_status %}
+        <tr><td><a href="{{ url_for('sr_list', status=code) }}"><span class="code">{{ code }}</span> {{ name }}</a></td><td class="numeric">{{ n }}</td></tr>
+      {% else %}<tr><td class="empty">No open SRs.</td></tr>{% endfor %}
+    </table>
+  </section>
+  <section class="card">
+    <h2>Open by product</h2>
+    <table class="plain">
+      {% for p, n in st.by_product %}<tr><td>{{ p }}</td><td class="numeric">{{ n }}</td></tr>
+      {% else %}<tr><td class="empty">No open SRs.</td></tr>{% endfor %}
+    </table>
+  </section>
+</div>
+{% endblock %}

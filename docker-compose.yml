@@ -1,0 +1,17 @@
+# Run on any server with Docker:
+#   SRT_PASSWORD='choose-a-strong-password' docker compose up -d
+services:
+  srtrack:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      SRT_PASSWORD: ${SRT_PASSWORD:?Set SRT_PASSWORD}
+      SRT_USERNAME: ${SRT_USERNAME:-srt}
+      SRT_OWNER: ${SRT_OWNER:-}
+    volumes:
+      - srt-data:/data
+
+volumes:
+  srt-data:

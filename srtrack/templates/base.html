@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SR Tracker{% endblock %} · srtrack</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="{{ url_for('index') }}">srtrack</a>
+  <nav>
+    <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>Today</a>
+    <a href="{{ url_for('sr_list') }}" {% if request.endpoint == 'sr_list' %}aria-current="page"{% endif %}>SRs</a>
+    <a href="{{ url_for('stats_page') }}" {% if request.endpoint == 'stats_page' %}aria-current="page"{% endif %}>Stats</a>
+    <a href="{{ url_for('import_page') }}" {% if request.endpoint == 'import_page' %}aria-current="page"{% endif %}>Import</a>
+  </nav>
+  <form class="jump" action="{{ url_for('go') }}" method="get" role="search">
+    <input name="q" placeholder="SR # or search…" aria-label="Open SR or search" autocomplete="off">
+  </form>
+  <a class="btn primary" href="{{ url_for('sr_new') }}">+ New SR</a>
+</header>
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

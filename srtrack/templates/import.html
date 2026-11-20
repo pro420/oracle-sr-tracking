@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Import{% endblock %}
+{% block content %}
+<h1>Import from CSV</h1>
+<section class="card">
+  <p>Upload a spreadsheet saved as CSV. It needs an SR number column; headers such as
+    <span class="code">SR Number</span>, <span class="code">Problem Summary</span>, <span class="code">Sev</span>,
+    <span class="code">Status</span>, <span class="code">Product</span>, <span class="code">Follow Up</span> are recognised.
+    An export from this app re-imports as-is.</p>
+  <form method="post" enctype="multipart/form-data" class="stack">
+    <input type="file" name="file" accept=".csv,text/csv" required aria-label="CSV file">
+    <label class="check"><input type="checkbox" name="update" value="1"> Update SRs that already exist</label>
+    <div><button class="btn primary">Import</button></div>
+  </form>
+</section>
+{% if result %}
+  {% set added, updated, errors = result %}
+  <section class="card">
+    <h2>Result</h2>
+    <p><b>{{ added }}</b> added, <b>{{ updated }}</b> updated{% if errors %}, <b>{{ errors|length }}</b> rows skipped{% endif %}.</p>
+    {% if errors %}<ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  </section>
+{% endif %}
+{% endblock %}

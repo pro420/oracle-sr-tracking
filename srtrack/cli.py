@@ -5,12 +5,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date
 from typing import Optional, Sequence
 
 from . import __version__
 from .io import export_csv, export_json, import_csv
+from .reports import agenda, stats
 from .store import STATUSES, SR, SRError, Store, default_db_path, parse_date
 
 # ---------------------------------------------------------------------------
@@ -359,69 +359,40 @@ def cmd_delete(store: Store, a: argparse.Namespace) -> int:
 
 def cmd_today(store: Store, a: argparse.Namespace) -> int:
     """Daily agenda: what needs attention right now."""
-    today = date.today()
-    open_srs = store.query()
-    due = [s for s in open_srs if s.is_due(today)]
-    due_ids = {s.number for s in due}
-    on_us = [s for s in open_srs if s.waiting_on == "us" and s.number not in due_ids]
-    shown = due_ids | {s.number for s in on_us}
-    stale_cutoff = datetime.now() - timedelta(days=a.stale)
-    stale = [
-        s
-        for s in open_srs
-        if s.number not in shown and datetime.fromisoformat(s.updated_at) < stale_cutoff
-    ]
-    acl = [s for s in open_srs if s.status == "ACL"]
-
-    print(bold(f"SR agenda for {today.isoformat()}") + dim(f"  ({len(open_srs)} open)"))
-    if acl:
-        print(red(f"\n⚠ {len(acl)} SR(s) pending auto-close — respond to Oracle or they will close."))
+    ag = agenda(store, a.stale)
+    print(bold(f"SR agenda for {ag.today.isoformat()}") + dim(f"  ({ag.open_count} open)"))
+    if ag.auto_close:
+        print(red(f"\n⚠ {len(ag.auto_close)} SR(s) pending auto-close — respond to Oracle or they will close."))
     print(bold("\nFollow-ups due"))
-    print_srs(due, today, "  Nothing due. ")
+    print_srs(ag.due, ag.today, "  Nothing due.")
     print(bold("\nWaiting on us"))
-    print_srs(on_us, today, "  Nothing waiting on us.")
+    print_srs(ag.on_us, ag.today, "  Nothing waiting on us.")
     print(bold(f"\nNo activity in {a.stale}+ days"))
-    print_srs(stale, today, "  Nothing stale.")
+    print_srs(ag.stale, ag.today, "  Nothing stale.")
     return 0
 
 
 def cmd_stats(store: Store, a: argparse.Namespace) -> int:
-    today = date.today()
-    srs = store.all()
-    open_srs = [s for s in srs if s.is_open]
-    closed = [s for s in srs if not s.is_open]
+    st = stats(store)
     print(bold("Summary"))
-    print(f"  Open: {len(open_srs)}   Closed: {len(closed)}   Total: {len(srs)}")
-    if open_srs:
-        waiting = Counter(s.waiting_on for s in open_srs)
-        print(f"  Waiting on Oracle: {waiting.get('oracle', 0)}   Waiting on us: {waiting.get('us', 0)}")
-        overdue = sum(1 for s in open_srs if s.is_overdue(today))
-        ages = sorted(s.age_days(today) for s in open_srs)
-        print(f"  Overdue follow-ups: {overdue}")
-        print(f"  Open age: median {ages[len(ages) // 2]}d, oldest {ages[-1]}d")
-
+    print(f"  Open: {st.open}   Closed: {st.closed}   Total: {st.total}")
+    if st.open:
+        print(f"  Waiting on Oracle: {st.waiting_oracle}   Waiting on us: {st.waiting_us}")
+        print(f"  Overdue follow-ups: {st.overdue}")
+        print(f"  Open age: median {st.open_age_median}d, oldest {st.open_age_max}d")
         print(bold("\nOpen by severity"))
-        sev = Counter(s.severity for s in open_srs)
-        for k in sorted(sev):
-            print(f"  {SEV_COLOR[k](f'S{k}')}  {sev[k]:>4}  {'█' * sev[k]}")
+        for k, n in st.by_severity:
+            print(f"  {SEV_COLOR[k](f'S{k}')}  {n:>4}  {'█' * n}")
         print(bold("\nOpen by status"))
-        st = Counter(s.status for s in open_srs)
-        for k in STATUSES:
-            if st.get(k):
-                print(f"  {k}  {st[k]:>4}  {STATUSES[k][0]}")
-        prod = Counter(s.product or "(none)" for s in open_srs)
+        for code, name, n in st.by_status:
+            print(f"  {code}  {n:>4}  {name}")
         print(bold("\nOpen by product"))
-        for k, n in prod.most_common(10):
+        for k, n in st.by_product:
             print(f"  {n:>4}  {k}")
-    if closed:
-        durations = sorted(s.age_days() for s in closed)
+    if st.closed:
         print(bold("\nClosed"))
-        print(
-            f"  Time to close: median {durations[len(durations) // 2]}d, "
-            f"mean {sum(durations) / len(durations):.1f}d"
-        )
-        recent = [s for s in closed if s.closed_at and s.closed_at[:10] >= (today - timedelta(days=30)).isoformat()]
-        print(f"  Closed in last 30 days: {len(recent)}")
+        print(f"  Time to close: median {st.close_median}d, mean {st.close_mean:.1f}d")
+        print(f"  Closed in last 30 days: {st.closed_last_30}")
     return 0
 
 
@@ -449,6 +420,21 @@ def cmd_import(store: Store, a: argparse.Namespace) -> int:
     for e in errors:
         print(red(f"  {e}"), file=sys.stderr)
     return 1 if errors else 0
+
+
+def cmd_web(store: Store, a: argparse.Namespace) -> int:
+    try:
+        from .web import create_app
+    except ImportError:
+        raise SRError("the web UI needs Flask: pip install 'srtrack[web]'") from None
+    if a.host not in ("127.0.0.1", "localhost", "::1") and not os.environ.get("SRT_PASSWORD"):
+        raise SRError("set SRT_PASSWORD before serving on a non-local address")
+    db = store.path
+    store.close()
+    app = create_app(db)
+    print(f"srtrack web UI on http://{a.host}:{a.port}  (Ctrl+C to stop)")
+    app.run(host=a.host, port=a.port, debug=False)
+    return 0
 
 
 def cmd_statuses(store: Store, a: argparse.Namespace) -> int:
@@ -595,6 +581,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("ref", metavar="SR")
     p.add_argument("-y", "--yes", action="store_true")
     p.set_defaults(func=cmd_delete)
+
+    p = sub.add_parser("web", help="run the browser UI locally (needs Flask)")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8000)
+    p.set_defaults(func=cmd_web)
 
     p = sub.add_parser("statuses", help="list status codes")
     p.set_defaults(func=cmd_statuses)

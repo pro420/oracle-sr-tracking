@@ -1,0 +1,19 @@
+# Render Blueprint: New > Blueprint > pick this repo. Render asks for SRT_PASSWORD.
+# A persistent disk is required so the SQLite database survives deploys (paid plan).
+services:
+  - type: web
+    name: srtrack
+    runtime: docker
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: SRT_PASSWORD
+        sync: false
+      - key: SRT_USERNAME
+        value: srt
+      - key: SRT_SECRET_KEY
+        generateValue: true
+    disk:
+      name: srt-data
+      mountPath: /data
+      sizeGB: 1

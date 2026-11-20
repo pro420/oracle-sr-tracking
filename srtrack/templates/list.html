@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sr_table with context %}
+{% block title %}SRs{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>Service requests</h1>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('export', fmt='csv') }}">Export CSV</a>
+    <a class="btn" href="{{ url_for('export', fmt='json') }}">Export JSON</a>
+  </div>
+</div>
+<form class="filters" method="get">
+  <input name="q" value="{{ args.get('q','') }}" placeholder="Search incl. notes" aria-label="Search">
+  <select name="scope" aria-label="Scope">
+    {% for v, l in [('open','Open'),('closed','Closed'),('all','All')] %}<option value="{{ v }}" {% if scope == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  </select>
+  <select name="sev" aria-label="Severity">
+    <option value="">Any sev</option>
+    {% for s in SEVERITIES %}<option value="{{ s }}" {% if args.get('sev') == s|string %}selected{% endif %}>Sev {{ s }}</option>{% endfor %}
+  </select>
+  <select name="status" aria-label="Status">
+    <option value="">Any status</option>
+    {% for code, (label, who) in STATUSES.items() %}<option value="{{ code }}" {% if args.get('status') == code %}selected{% endif %}>{{ code }} — {{ label }}</option>{% endfor %}
+  </select>
+  <select name="waiting" aria-label="Waiting on">
+    <option value="">Waiting on anyone</option>
+    <option value="us" {% if args.get('waiting') == 'us' %}selected{% endif %}>Waiting on us</option>
+    <option value="oracle" {% if args.get('waiting') == 'oracle' %}selected{% endif %}>Waiting on Oracle</option>
+  </select>
+  <input name="product" value="{{ args.get('product','') }}" placeholder="Product" aria-label="Product">
+  <input name="tag" value="{{ args.get('tag','') }}" placeholder="Tag" aria-label="Tag">
+  <select name="sort" aria-label="Sort">
+    {% for v, l in [('priority','Priority'),('follow_up','Follow-up'),('updated','Recently updated'),('opened','Oldest first'),('number','SR number')] %}
+      <option value="{{ v }}" {% if args.get('sort','priority') == v %}selected{% endif %}>Sort: {{ l }}</option>
+    {% endfor %}
+  </select>
+  <label class="check"><input type="checkbox" name="due" value="1" {% if args.get('due') %}checked{% endif %}> Due only</label>
+  <button class="btn">Filter</button>
+  <a class="btn ghost" href="{{ url_for('sr_list') }}">Reset</a>
+</form>
+<p class="muted small">{{ srs|length }} SR(s)</p>
+{{ sr_table(srs, "No SRs match these filters.") }}
+{% endblock %}

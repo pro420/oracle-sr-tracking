@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sr_table with context %}
+{% block title %}Today{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>Today <span class="muted">{{ ag.today.isoformat() }}</span></h1>
+  <div class="counts">
+    <a href="{{ url_for('sr_list') }}"><b>{{ ag.open_count }}</b> open</a>
+    <a href="{{ url_for('sr_list', waiting='us') }}"><b>{{ ag.due|length + ag.on_us|length }}</b> need you</a>
+  </div>
+</div>
+
+{% if ag.auto_close %}
+<div class="flash error">⚠ {{ ag.auto_close|length }} SR(s) pending auto-close — respond to Oracle or they will close:
+  {% for sr in ag.auto_close %}<a href="{{ url_for('sr_detail', number=sr.number) }}">{{ sr.number }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+<section>
+  <h2>Follow-ups due <span class="badge">{{ ag.due|length }}</span></h2>
+  {{ sr_table(ag.due, "Nothing due. 🎉") }}
+</section>
+<section>
+  <h2>Waiting on you <span class="badge">{{ ag.on_us|length }}</span></h2>
+  {{ sr_table(ag.on_us, "Nothing waiting on you.") }}
+</section>
+<section>
+  <h2>No activity in {{ stale }}+ days <span class="badge">{{ ag.stale|length }}</span></h2>
+  {{ sr_table(ag.stale, "Nothing stale.") }}
+</section>
+{% endblock %}

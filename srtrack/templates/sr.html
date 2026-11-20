@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sev, waiting, follow_up, status_select with context %}
+{% block title %}{{ sr.number }}{% endblock %}
+{% block content %}
+<div class="head">
+  <div>
+    <p class="muted mono">{{ sr.number }}</p>
+    <h1>{{ sr.title }}</h1>
+    <p class="meta">{{ sev(sr.severity) }} <span class="code">{{ sr.status }}</span> {{ sr.status_name }}
+      · {{ sr.days_in_status() }}d in status · waiting on {{ waiting(sr) }}
+      · opened {{ sr.opened_at }} ({{ sr.age_days(today) }}d){% if sr.closed_at %} · closed {{ sr.closed_at[:10] }}{% endif %}</p>
+  </div>
+</div>
+
+<div class="cols">
+  <div>
+    <section class="card">
+      <h2>Log an update</h2>
+      <form method="post" action="{{ url_for('sr_note', number=sr.number) }}" class="stack">
+        <textarea name="text" rows="4" placeholder="What happened? Paste Oracle's update or what you sent." aria-label="Note"></textarea>
+        <div class="row">
+          <label>Status {{ status_select('status', '', blank='(unchanged)') }}</label>
+          <label>Follow-up <input name="follow_up" placeholder="+2d, fri, YYYY-MM-DD"></label>
+        </div>
+        <label>Next action <input name="next_action" placeholder="(unchanged)"></label>
+        <div><button class="btn primary">Save update</button></div>
+      </form>
+    </section>
+
+    <section>
+      <h2>History</h2>
+      <ol class="history">
+        {% for e in events %}
+          <li class="{{ e.kind }}"><time>{{ e.at[:16] }}</time><div>{{ e.text }}</div></li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+
+  <aside>
+    <section class="card">
+      <h2>Details</h2>
+      <form method="post" action="{{ url_for('sr_edit', number=sr.number) }}" class="stack">
+        <label>Title <input name="title" value="{{ sr.title }}" required></label>
+        <div class="row">
+          <label>Severity <select name="severity">{% for s in SEVERITIES %}<option value="{{ s }}" {% if s == sr.severity %}selected{% endif %}>Sev {{ s }}</option>{% endfor %}</select></label>
+          <label>Status {{ status_select('status', sr.status) }}</label>
+        </div>
+        <label>Follow-up <span class="muted small">{{ follow_up(sr) }}</span><input name="follow_up" value="{{ sr.follow_up or '' }}" placeholder="YYYY-MM-DD, +3d, fri"></label>
+        <label>Next action <input name="next_action" value="{{ sr.next_action }}"></label>
+        <label>Product <input name="product" value="{{ sr.product }}"></label>
+        <label>Environment <input name="environment" value="{{ sr.environment }}"></label>
+        <div class="row">
+          <label>Owner <input name="owner" value="{{ sr.owner }}"></label>
+          <label>Oracle engineer <input name="oracle_engineer" value="{{ sr.oracle_engineer }}"></label>
+        </div>
+        <label>Tags <input name="tags" value="{{ sr.tags }}"></label>
+        <label>Bugs <input name="bugs" value="{{ sr.bugs }}"></label>
+        <label>Opened <input name="opened_at" type="date" value="{{ sr.opened_at }}"></label>
+        <label>Resolution <textarea name="resolution" rows="2">{{ sr.resolution }}</textarea></label>
+        <div><button class="btn">Save details</button></div>
+      </form>
+    </section>
+
+    {% if sr.is_open %}
+    <section class="card">
+      <h2>Close SR</h2>
+      <form method="post" action="{{ url_for('sr_close', number=sr.number) }}" class="stack">
+        <textarea name="resolution" rows="2" placeholder="Resolution summary" aria-label="Resolution">{{ sr.resolution }}</textarea>
+        <div><button class="btn">Close SR</button></div>
+      </form>
+    </section>
+    {% endif %}
+
+    <details class="danger">
+      <summary>Delete SR</summary>
+      <form method="post" action="{{ url_for('sr_delete', number=sr.number) }}" class="stack">
+        <label class="check"><input type="checkbox" name="confirm" value="yes"> Delete {{ sr.number }} and all history</label>
+        <div><button class="btn danger">Delete</button></div>
+      </form>
+    </details>
+  </aside>
+</div>
+{% endblock %}

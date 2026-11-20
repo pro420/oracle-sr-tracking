@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_select with context %}
+{% block title %}New SR{% endblock %}
+{% block content %}
+<h1>New SR</h1>
+<form class="card grid" method="post">
+  <label>SR number <input name="number" required placeholder="3-38123456789" value="{{ form.get('number','') }}" autofocus></label>
+  <label>Severity
+    <select name="severity">{% for s in SEVERITIES %}<option value="{{ s }}" {% if (form.get('severity') or '3') == s|string %}selected{% endif %}>Sev {{ s }}</option>{% endfor %}</select>
+  </label>
+  <label class="wide">Problem summary <input name="title" required value="{{ form.get('title','') }}"></label>
+  <label>Status {{ status_select('status', form.get('status') or 'NEW') }}</label>
+  <label>Product <input name="product" value="{{ form.get('product','') }}" placeholder="Oracle Database 19c"></label>
+  <label>Environment <input name="environment" value="{{ form.get('environment','') }}" placeholder="PROD / host / version"></label>
+  <label>Owner <input name="owner" value="{{ form.get('owner', owner_default) }}"></label>
+  <label>Oracle engineer <input name="oracle_engineer" value="{{ form.get('oracle_engineer','') }}"></label>
+  <label>Opened <input name="opened_at" type="date" value="{{ form.get('opened_at') or today.isoformat() }}"></label>
+  <label>Follow-up <input name="follow_up" value="{{ form.get('follow_up','') }}" placeholder="YYYY-MM-DD, +3d, fri"></label>
+  <label>Tags <input name="tags" value="{{ form.get('tags','') }}" placeholder="prod, rac"></label>
+  <label>Bugs <input name="bugs" value="{{ form.get('bugs','') }}" placeholder="35123456"></label>
+  <label class="wide">Next action <input name="next_action" value="{{ form.get('next_action','') }}"></label>
+  <label class="wide">First note <textarea name="note" rows="4">{{ form.get('note','') }}</textarea></label>
+  <div class="wide"><button class="btn primary">Add SR</button></div>
+</form>
+{% endblock %}
