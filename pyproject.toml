@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "srtrack"
+version = "0.1.0"
+description = "Fast command-line tracker for Oracle Support Service Requests (SRs)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+srt = "srtrack.cli:main"
+
+[tool.setuptools]
+packages = ["srtrack"]
